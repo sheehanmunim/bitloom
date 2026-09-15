@@ -1,0 +1,14 @@
+; WS2812 / NeoPixel driver, 10 ticks per bit (T0H 3, T1H 7, period 10).
+; Config: out_shr=0 (MSB first), autopull, pull_thresh=8 (one byte per FIFO
+; word, or 16 for two bytes), side-set pin = data.
+.program ws2812
+.side_set 1
+.wrap_target
+bitloop:
+    out x, 1        side 0 [2]   ; low tail of the previous bit (3 ticks)
+    jmp !x do_zero  side 1 [1]   ; high for 3 ticks in both cases
+do_one:
+    jmp bitloop     side 1 [4]   ; a one stays high 5 more ticks (T1H = 7)
+do_zero:
+    nop             side 0 [4]   ; a zero drops immediately (T0H = 3)
+.wrap

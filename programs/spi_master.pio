@@ -1,0 +1,10 @@
+; SPI master, mode 0 (CPOL=0, CPHA=0), MSB first, 4 ticks per bit.
+; Pins: MOSI = out pin, MISO = in pin 0, SCK = side-set pin.
+; Config: out_shr=0, in_shr=0, autopull + autopush with threshold 8 (or 16).
+; Chip select is driven by the host (exec "set pins") or another machine.
+.program spi_master
+.side_set 1
+.wrap_target
+    out pins, 1     side 0 [1]   ; set up MOSI while SCK is low
+    in pins, 1      side 1 [1]   ; sample MISO on the rising edge
+.wrap

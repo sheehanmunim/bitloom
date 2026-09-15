@@ -1,0 +1,8 @@
+# Generic technology-independent synthesis for a quick area/cell-count estimate.
+# Run: yosys -s synth/area.ys
+read_verilog -I src src/bitloom_fifo.v src/bitloom_spi.v src/bitloom_sm.v src/project.v
+hierarchy -check -top tt_um_sheehanmunim_bitloom
+synth -top tt_um_sheehanmunim_bitloom
+abc -g AND,NAND,OR,NOR,XOR,XNOR,MUX
+opt_clean
+stat

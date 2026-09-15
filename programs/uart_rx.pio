@@ -1,0 +1,17 @@
+; UART receiver using cycle-counted delays (RP2040 PIO style), 8 ticks per bit.
+; Pins: RX is in pin 0 and also the JMP pin.
+; Config: in_shr=1 (LSB first), in_base=RX, jmp_pin=RX, autopush off.
+; The received byte lands in ISR bits [15:8] (right-shifted), so the host reads
+; rx_word >> 8, or set push_thresh=8 with autopush to get it in [7:0].
+.program uart_rx
+start:
+    wait 0 pin 0                 ; falling edge of the start bit
+    set x, 7        [10]         ; 1.5 bit periods into the frame (12 ticks)
+bitloop:
+    in pins, 1                   ; sample one data bit
+    jmp x-- bitloop [6]          ; 8 ticks per bit
+    jmp pin good                 ; stop bit must be high
+    wait 1 pin 0                 ; framing error: wait for the line to go idle
+    jmp start
+good:
+    push

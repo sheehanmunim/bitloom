@@ -1,0 +1,9 @@
+# Bounded formal checks with plain Yosys (no SymbiYosys needed).
+# Run: yosys -s formal/check.ys
+# Proves the FIFO invariants under FORMAL for 24 cycles from reset.
+read_verilog -formal -I src src/bitloom_fifo.v
+prep -top bitloom_fifo
+memory_map
+opt -fast
+async2sync
+sat -seq 24 -prove-asserts -set-init-zero -set-at 1 rst_n 0 -verify -show-inputs -show-outputs bitloom_fifo

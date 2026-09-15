@@ -1,0 +1,14 @@
+; Edge timestamp capture ("logic analyser lite").
+; Pushes the 16-bit timebase value at every rising and falling edge of in pin 0.
+; The host reconstructs pulse widths from consecutive timestamps. Because T runs
+; on the divided clock, the divider sets the capture resolution.
+; Config: in_base = pin under test, in_shr=0, autopush off.
+.program edge_capture
+.wrap_target
+    wait 1 pin 0
+    in t, 16
+    push
+    wait 0 pin 0
+    in t, 16
+    push
+.wrap

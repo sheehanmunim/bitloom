@@ -1,0 +1,59 @@
+# Tiny Tapeout project information
+project:
+  title:        "BitLoom protocol emulator"
+  author:       "Sheehan Munim"
+  discord:      ""
+  description:  "Four PIO-style I/O state machines with deadline scheduling and edge timestamping: UART, SPI, I2C, WS2812 and more in firmware"
+  language:     "Verilog"
+  clock_hz:     50000000
+
+  # How many tiles your design occupies? A single tile is about 167x108 uM.
+  tiles: "6x4"          # Jane Street protocol-emulator competition allocation
+
+  # Your top module name must start with "tt_um_". Make it unique by including your github username:
+  top_module:  "tt_um_sheehanmunim_bitloom"
+
+  # List your project's source files here.
+  # Source files must be in ./src and you must list each source file separately, one per line.
+  # Don't forget to also update `PROJECT_SOURCES` in test/Makefile.
+  source_files:
+    - "project.v"
+    - "bitloom_sm.v"
+    - "bitloom_fifo.v"
+    - "bitloom_spi.v"
+
+# The pinout of your project. Leave unused pins blank. DO NOT delete or add any pins.
+# This section is for the datasheet/website. Use descriptive names (e.g., RX, TX, MOSI, SCL, SEG_A, etc.).
+pinout:
+  # Inputs
+  ui[0]: "GPIO0 (input)"
+  ui[1]: "GPIO1 (input)"
+  ui[2]: "GPIO2 (input)"
+  ui[3]: "GPIO3 (input)"
+  ui[4]: "GPIO4 (input)"
+  ui[5]: "GPIO5 (input)"
+  ui[6]: "GPIO6 (input)"
+  ui[7]: "GPIO7 (input)"
+
+  # Outputs
+  uo[0]: "GPIO8 (output)"
+  uo[1]: "GPIO9 (output)"
+  uo[2]: "GPIO10 (output)"
+  uo[3]: "GPIO11 (output)"
+  uo[4]: "GPIO12 (output)"
+  uo[5]: "GPIO13 (output)"
+  uo[6]: "GPIO14 (output)"
+  uo[7]: "GPIO15 (output)"
+
+  # Bidirectional pins
+  uio[0]: "GPIO16 (bidirectional)"
+  uio[1]: "GPIO17 (bidirectional)"
+  uio[2]: "GPIO18 (bidirectional)"
+  uio[3]: "GPIO19 (bidirectional)"
+  uio[4]: "HOST_CS_N (input)"
+  uio[5]: "HOST_SCK (input)"
+  uio[6]: "HOST_MOSI (input)"
+  uio[7]: "HOST_MISO (output)"
+
+# Do not change!
+yaml_version: 6

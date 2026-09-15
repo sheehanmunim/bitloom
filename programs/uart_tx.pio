@@ -1,0 +1,14 @@
+; UART transmitter: 8N1, 8 ticks per bit. Baud = tick_rate / 8.
+; Pins: TX is both the OUT pin (count 1) and the SET pin (count 1).
+; Config: out_shr=1 (LSB first), pull_thresh=8, autopull off.
+; Before enabling, exec "set pins, 1" so the line idles high.
+.program uart_tx
+.wrap_target
+    pull block                   ; wait for a byte (line stays at stop level)
+    set x, 7                     ; 8 data bits
+    set pins, 0     [7]          ; start bit, 8 ticks
+bitloop:
+    out pins, 1                  ; data bit: 1 + 7 = 8 ticks
+    jmp x-- bitloop [6]
+    set pins, 1     [5]          ; stop bit: 6 ticks + pull + set x = 8 ticks minimum
+.wrap

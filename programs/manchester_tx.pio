@@ -1,0 +1,20 @@
+; Manchester (IEEE 802.3 style) transmitter with deadline scheduling.
+; A 0 bit is high-then-low, a 1 bit is low-then-high. Half-bit period is
+; loaded into X by the host before the machine starts (via exec "set x, N" or
+; "pull; out x, 16"). Output pin = out pin (count 1).
+; Because each edge is scheduled at DL += X, an autopull stall on "out y, 1"
+; that lasts less than a half period does not disturb the bit clock.
+; Config: out_shr=1, autopull, pull_thresh=8.
+.program manchester_tx
+    pull block
+    out x, 16                    ; half-bit period in ticks
+    time t+2
+.wrap_target
+    out y, 1
+    wait time
+    mov pins, ~y                 ; first half carries the inverted bit
+    time dl+x
+    wait time
+    mov pins, y                  ; second half carries the bit
+    time dl+x
+.wrap

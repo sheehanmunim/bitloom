@@ -1,0 +1,20 @@
+; UART receiver scheduled with absolute deadlines instead of cycle counting.
+; Every sample point is DL = start_edge + 12 + 8*n ticks regardless of the
+; number of instructions on the path, which is the point of the TIME unit.
+; Config identical to uart_rx.pio.
+.program uart_rx_time
+start:
+    wait 0 pin 0                 ; start edge observed at tick e
+    time t+10                    ; DL = e + 11 (first sample at e + 12)
+    set x, 7
+bitloop:
+    wait time
+    in pins, 1                   ; sample at DL + 1
+    time dl+8                    ; next deadline one bit later
+    jmp x-- bitloop
+    wait time
+    jmp pin good                 ; stop bit
+    wait 1 pin 0
+    jmp start
+good:
+    push

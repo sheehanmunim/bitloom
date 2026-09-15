@@ -1,0 +1,68 @@
+; I2C master, open-drain on both lines via pin directions.
+; Pins: SDA = out/set pin (count 1) and in pin 0, SCL = side-set pin (pindirs).
+; The GPIO output latches for SDA and SCL must be 0 (their reset value) so that
+; OE=1 drives low and OE=0 releases the line to the pull-up.
+; Config: out_shr=0 (MSB first), in_shr=0, side_set base=SCL count=1 pindirs.
+;
+; Each TX FIFO word is one bus byte with control bits:
+;   [15] start   send START (or repeated START) before the byte
+;   [14] nack    for reads: 1 = NACK the byte (last byte of a read)
+;   [13] read    1 = read a byte from the slave, 0 = write [8:1]
+;   [12:9] 0
+;   [8:1] data   byte to write (ignored for reads)
+;   [0]  stop    send STOP after the byte
+; Each byte pushes one RX word: for writes the slave's ACK bit (0 = acked) in
+; bit 0; for reads the byte received in bits [7:0].
+.program i2c_master
+.side_set 1 pindirs
+.wrap_target
+top:
+    pull block          side 0      ; bus idle: SCL and SDA released
+    out x, 1            side 0      ; start flag
+    jmp !x no_start     side 0
+    set pindirs, 1      side 0 [1]  ; SDA low while SCL high: START
+    jmp no_start        side 1 [1]  ; SCL low
+next:
+    pull block          side 1      ; between bytes: SCL held low
+    out x, 1            side 1      ; start flag
+    jmp !x no_start     side 1
+    set pindirs, 0      side 1 [1]  ; SDA released while SCL low
+    nop                 side 0 [1]  ; SCL high
+    set pindirs, 1      side 0 [1]  ; SDA low while SCL high: repeated START
+no_start:
+    out y, 1            side 1      ; nack flag -> y   (SCL low)
+    out x, 1            side 1      ; read flag -> x
+    out null, 4         side 1      ; discard padding
+    mov osr, ~osr       side 1      ; data bits become pin directions (0 -> drive low)
+    jmp !x write_bits   side 1
+read_bits:
+    set pindirs, 0      side 1 [1]  ; release SDA
+    set x, 7            side 1
+rbit:
+    nop                 side 0 [1]  ; SCL high
+    in pins, 1          side 0 [1]  ; sample SDA
+    jmp x-- rbit        side 1 [3]  ; SCL low
+    mov pindirs, ~y     side 1 [1]  ; ACK (drive low) unless nack flag set
+    nop                 side 0 [3]  ; clock the ACK bit
+    out null, 8         side 1 [1]  ; discard the unused data bits
+    set pindirs, 0      side 1      ; release SDA
+    jmp check_stop      side 1
+write_bits:
+    set x, 7            side 1
+wbit:
+    out pindirs, 1      side 1 [1]  ; SDA = data bit (inverted into OE)
+    nop                 side 0 [3]  ; SCL high
+    jmp x-- wbit        side 1 [1]  ; SCL low
+    set pindirs, 0      side 1 [1]  ; release SDA for the slave's ACK
+    nop                 side 0 [1]  ; SCL high
+    in pins, 1          side 0 [1]  ; sample ACK
+check_stop:
+    push                side 1 [1]  ; SCL low; report data / ack to the host
+    out x, 1            side 1      ; x = ~stop
+    jmp !x do_stop      side 1
+    jmp next            side 1      ; no STOP: hold SCL low for the next byte
+do_stop:
+    set pindirs, 1      side 1 [1]  ; SDA low
+    nop                 side 0 [1]  ; SCL high
+    set pindirs, 0      side 0 [1]  ; SDA released while SCL high: STOP
+.wrap
