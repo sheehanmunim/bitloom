@@ -13,3 +13,5 @@ test/results.xml
 test/gate_level_netlist.v
 .venv/
 *.log
+tt/
+runs/

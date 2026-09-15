@@ -25,7 +25,11 @@ def prog(name):
     return assemble_file(str(PROG_DIR / f"{name}.pio"))
 
 
+LAST = 3   # index of the last machine; updated from NUM_SM in setup()
+
+
 async def setup(dut):
+    global LAST
     clock = Clock(dut.clk, 20, unit="ns")   # 50 MHz
     cocotb.start_soon(clock.start())
     dut.ena.value = 1
@@ -38,6 +42,7 @@ async def setup(dut):
     await ClockCycles(dut.clk, 5)
     host = BitLoom(dut, pins)
     assert await host.read1(R_ID) == ID_VALUE, "chip ID mismatch"
+    LAST = (await host.read1(R_NUM_SM)) - 1
     return host, pins
 
 
@@ -223,7 +228,7 @@ async def test_host_port(dut):
     """SPI host port: ID, register write/readback, instruction memory."""
     host, pins = await setup(dut)
     assert await host.read1(R_VERSION) == 1
-    assert await host.read1(R_NUM_SM) == 4
+    assert await host.read1(R_NUM_SM) in (3, 4)
     assert await host.read1(R_IMEM_SIZE) == 64
 
     await host.write(sm_reg(2, S_DIV_INT_L), [0x34, 0x12, 0x80, 0x1F])
@@ -461,14 +466,14 @@ async def test_ws2812(dut):
     rng = random.Random(SEED + 7)
     p = prog("ws2812")
     off = await host.load_program(p, 0)
-    await host.configure(3, p, offset=off, div=1, sideset_base=12, autopull=True, pull_thresh=8)
-    await host.restart(8)
+    await host.configure(LAST, p, offset=off, div=1, sideset_base=12, autopull=True, pull_thresh=8)
+    await host.restart(1 << LAST)
     log, stop = [], [False]
     cocotb.start_soon(edge_log(dut, pins, 12, log, stop))
     data = [rng.randrange(256) for _ in range(3)]
     for b in data:            # prefill: the 80-cycle bytes outrun the SPI host
-        await host.push(3, b << 8)
-    await host.enable(8)
+        await host.push(LAST, b << 8)
+    await host.enable(1 << LAST)
     await ClockCycles(dut.clk, 400)
     stop[0] = True
     rises = [t for t, v in log if v == 1]
@@ -543,25 +548,25 @@ async def test_debug_exec_step(dut):
         .wrap
     """)
     off = await host.load_program(p, 20)
-    await host.configure(3, p, offset=off, set_base=13, set_count=1)
-    await host.restart(8)
-    assert await host.pc(3) == 20
-    await host.exec(3, assemble("set pins, 1").words[0])
+    await host.configure(LAST, p, offset=off, set_base=13, set_count=1)
+    await host.restart(1 << LAST)
+    assert await host.pc(LAST) == 20
+    await host.exec(LAST, assemble("set pins, 1").words[0])
     await ClockCycles(dut.clk, 5)
     assert pins.gpio_out(13) == 1
-    assert await host.pc(3) == 20, "exec must not move PC"
-    await host.step(8)
-    assert await host.pc(3) == 21 and await host.x(3) == 5
-    await host.step(8)
-    assert await host.pc(3) == 22 and await host.y(3) == 9
-    await host.step(8)
-    await host.step(8)          # jmp x-- with x=1: taken, x -> 0
-    assert await host.pc(3) == 23 and await host.x(3) == 0
-    await host.step(8)          # x == 0: fall through
-    assert await host.pc(3) == 24
-    await host.step(8)          # set y,0 then wrap to 23
-    assert await host.pc(3) == 23 and await host.y(3) == 0
-    st = await host.status(3)
+    assert await host.pc(LAST) == 20, "exec must not move PC"
+    await host.step(1 << LAST)
+    assert await host.pc(LAST) == 21 and await host.x(LAST) == 5
+    await host.step(1 << LAST)
+    assert await host.pc(LAST) == 22 and await host.y(LAST) == 9
+    await host.step(1 << LAST)
+    await host.step(1 << LAST)          # jmp x-- with x=1: taken, x -> 0
+    assert await host.pc(LAST) == 23 and await host.x(LAST) == 0
+    await host.step(1 << LAST)          # x == 0: fall through
+    assert await host.pc(LAST) == 24
+    await host.step(1 << LAST)          # set y,0 then wrap to 23
+    assert await host.pc(LAST) == 23 and await host.y(LAST) == 0
+    st = await host.status(LAST)
     assert st & ST_ENABLED == 0 and st & ST_TX_EMPTY and st & ST_RX_EMPTY
 
 

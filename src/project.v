@@ -27,7 +27,7 @@ module tt_um_sheehanmunim_bitloom (
     input  wire       clk,      // clock
     input  wire       rst_n     // reset_n - low to reset
 );
-  localparam N_SM    = 4;
+  localparam N_SM    = 3;
   localparam IMEM_AW = 6;
   localparam IMEM_N  = 1 << IMEM_AW;
   localparam VERSION = 8'h01;
