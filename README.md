@@ -126,7 +126,7 @@ the same description.
   12 MHz-multiple tick and NRZI/bit-stuffing in firmware; 10BASE-T Manchester
   needs a 20 MHz tick, i.e. a 40 MHz or 60 MHz system clock. Both fit the ISA.
 * Not taped out yet. The CI GDS job is the source of truth for area and timing.
-* The first hardening attempt with four machines synthesised to 21.9K cells (38% utilisation) but detailed routing could not close on the three routing layers the Tiny Tapeout flow allows; the current build uses three machines and a lower placement density while that is worked out. `N_SM` in `src/project.v` is the knob.
+* The first hardening attempt with four machines synthesised to 28.1K cells, 0.389 mm² (49% utilisation) and detailed routing was still converging (24 violations left) when it hit the six-hour CI limit, on the three routing layers the Tiny Tapeout flow allows. The current build uses three machines (0.316 mm², 21.9K cells) and a lower placement density. `N_SM` in `src/project.v` is the knob.
 
 ## License
 
