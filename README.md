@@ -19,6 +19,7 @@ Think RP2040 PIO, with these differences:
 | Host interface | AHB in the MCU | 4-wire SPI slave, any MCU can drive it |
 | Input conditioning | 2-flop sync | 2-flop sync + optional 3-sample majority filter |
 | Instruction memory | 32 × 16 shared | 64 × 16 shared |
+| Machines | 4 | 3 (4 fit in area; routing closure pending) |
 
 Shipped firmware (`programs/`): UART TX, UART RX (cycle-counted and
 deadline-scheduled), SPI master, I2C master with repeated start and NACK
@@ -125,6 +126,7 @@ the same description.
   12 MHz-multiple tick and NRZI/bit-stuffing in firmware; 10BASE-T Manchester
   needs a 20 MHz tick, i.e. a 40 MHz or 60 MHz system clock. Both fit the ISA.
 * Not taped out yet. The CI GDS job is the source of truth for area and timing.
+* The first hardening attempt with four machines synthesised to 21.9K cells (38% utilisation) but detailed routing could not close on the three routing layers the Tiny Tapeout flow allows; the current build uses three machines and a lower placement density while that is worked out. `N_SM` in `src/project.v` is the knob.
 
 ## License
 

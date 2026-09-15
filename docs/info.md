@@ -4,7 +4,7 @@ This file is used to generate your project datasheet.
 
 ## How it works
 
-BitLoom is a general-purpose protocol emulator: four small programmable I/O
+BitLoom is a general-purpose protocol emulator: three small programmable I/O
 state machines that bit-bang protocols from firmware with cycle-exact timing,
 in the spirit of the RP2040 PIO and TI PRU, plus a few things those lack.
 

@@ -3,7 +3,7 @@ project:
   title:        "BitLoom protocol emulator"
   author:       "Sheehan Munim"
   discord:      ""
-  description:  "Four PIO-style I/O state machines with deadline scheduling and edge timestamping: UART, SPI, I2C, WS2812 and more in firmware"
+  description:  "Three PIO-style I/O state machines with deadline scheduling and edge timestamping: UART, SPI, I2C, WS2812 and more in firmware"
   language:     "Verilog"
   clock_hz:     50000000
 
