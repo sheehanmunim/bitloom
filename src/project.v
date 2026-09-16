@@ -35,6 +35,14 @@ module tt_um_sheehanmunim_bitloom (
   wire _unused = &{ena, 1'b0};
 
   // ------------------------------------------------------------------
+  // Reset: rst_n is a chip input that fans out to every flop. Two flops of
+  // synchroniser keep that tree off the input-port timing path.
+  // ------------------------------------------------------------------
+  reg [1:0] rst_sync;
+  always @(posedge clk) rst_sync <= {rst_sync[0], rst_n};
+  wire rst_n_i = rst_sync[1];
+
+  // ------------------------------------------------------------------
   // Host SPI port
   // ------------------------------------------------------------------
   wire       h_wr, h_rd, h_space;
@@ -43,7 +51,7 @@ module tt_um_sheehanmunim_bitloom (
   wire       h_miso;
 
   bitloom_spi u_spi (
-      .clk(clk), .rst_n(rst_n),
+      .clk(clk), .rst_n(rst_n_i),
       .sck(uio_in[5]), .csn(uio_in[4]), .mosi(uio_in[6]), .miso(h_miso),
       .wr_en(h_wr), .rd_en(h_rd), .space(h_space), .addr(h_addr), .raddr(h_raddr),
       .wdata(h_wdata), .rdata(h_rdata)
@@ -56,14 +64,20 @@ module tt_um_sheehanmunim_bitloom (
   reg        cfg_infilt;
   wire [11:0] in_raw = {uio_in[3:0], ui_in};
   always @(posedge clk) begin
-    if (!rst_n) begin
+    if (!rst_n_i) begin
       in_s1 <= 0; in_s2 <= 0; in_s3 <= 0; in_s4 <= 0;
     end else begin
       in_s1 <= in_raw; in_s2 <= in_s1; in_s3 <= in_s2; in_s4 <= in_s3;
     end
   end
   wire [11:0] in_maj = (in_s2 & in_s3) | (in_s3 & in_s4) | (in_s2 & in_s4);
-  wire [11:0] in_f   = cfg_infilt ? in_maj : in_s2;
+  // The filter select is registered with the samples: from here the pin
+  // path runs through a machine's decode into the output registers.
+  reg  [11:0] in_f;
+  always @(posedge clk) begin
+    if (!rst_n_i) in_f <= 12'd0;
+    else          in_f <= cfg_infilt ? in_maj : in_s2;
+  end
 
   reg  [19:8] gpio_out;
   reg  [19:16] gpio_oe;
@@ -159,7 +173,7 @@ module tt_um_sheehanmunim_bitloom (
       wire rx_pop   = h_rd_reg && sel && (h_off == 5'h1A);
 
       bitloom_sm #(.IMEM_AW(IMEM_AW)) u_sm (
-          .clk(clk), .rst_n(rst_n),
+          .clk(clk), .rst_n(rst_n_i),
           .cfg_enable(cfg_enable[g]), .restart(restart), .step(step),
           .pc_wr(pc_wr), .pc_wdata(h_wdata[IMEM_AW-1:0]),
           .exec_wr(exec_wr), .exec_instr({h_wdata, exec_lo}),
@@ -215,7 +229,7 @@ module tt_um_sheehanmunim_bitloom (
   end
 
   always @(posedge clk) begin
-    if (!rst_n) begin
+    if (!rst_n_i) begin
       gpio_out <= 12'd0;
       gpio_oe  <= 4'd0;
       flags    <= 8'd0;
@@ -231,7 +245,7 @@ module tt_um_sheehanmunim_bitloom (
   // ------------------------------------------------------------------
   integer k;
   always @(posedge clk) begin
-    if (!rst_n) begin
+    if (!rst_n_i) begin
       cfg_enable <= 0;
       cfg_infilt <= 1'b0;
       txf_lo <= 8'd0; exec_lo <= 8'd0;
@@ -281,7 +295,7 @@ module tt_um_sheehanmunim_bitloom (
 
   // RX FIFO high byte is latched when the low byte is read (and popped).
   always @(posedge clk) begin
-    if (!rst_n) rxf_hi <= 8'd0;
+    if (!rst_n_i) rxf_hi <= 8'd0;
     else if (h_rd_reg && h_is_sm && h_off == 5'h1A) rxf_hi <= sm_rx_rdata[h_sm][15:8];
   end
 

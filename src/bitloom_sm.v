@@ -158,7 +158,6 @@ module bitloom_sm #(
   reg [15:0] div_cnt;
   reg [7:0]  div_frac;
   reg        exec_pend;
-  reg [15:0] exec_ir;
   reg        step_pend;
   reg        stalled_r;
   reg [15:0] ir_r;                 // instruction at PC, fetched last clock
@@ -221,13 +220,16 @@ module bitloom_sm #(
   // ------------------------------------------------------------------
   // Fetch: PC is only ever changed at a commit or by the host, and the next
   // tick is at least two clocks away, so IR is always current when decoded.
+  // A host-injected instruction (EXEC) is loaded straight into IR and held
+  // there until it commits, so decode never has to choose between the two.
   // ------------------------------------------------------------------
   always @(posedge clk) begin
-    if (!rst_n) ir_r <= 16'd0;
-    else        ir_r <= imem_rdata;
+    if (!rst_n)          ir_r <= 16'd0;
+    else if (exec_wr)    ir_r <= exec_instr;
+    else if (!exec_pend) ir_r <= imem_rdata;
   end
 
-  wire [15:0] ir  = exec_pend ? exec_ir : ir_r;
+  wire [15:0] ir  = ir_r;
   wire [2:0]  op  = ir[15:13];
   wire [3:0]  ds  = ir[12:9];
   wire [8:0]  arg = ir[8:0];
@@ -437,11 +439,11 @@ module bitloom_sm #(
     if (!rst_n) begin
       pc <= 0; x <= 0; y <= 0; isr <= 0; osr <= 0; t <= 0; dl <= 0;
       isr_cnt <= 0; osr_cnt <= 5'd16; delay_cnt <= 0;
-      exec_pend <= 0; exec_ir <= 0; step_pend <= 0; stalled_r <= 0;
+      exec_pend <= 0; step_pend <= 0; stalled_r <= 0;
     end else begin
       // Host side
       if (pc_wr)   pc <= pc_wdata;
-      if (exec_wr) begin exec_pend <= 1'b1; exec_ir <= exec_instr; end
+      if (exec_wr) exec_pend <= 1'b1;
       if (step)    step_pend <= 1'b1;
 
       if (restart) begin
