@@ -257,7 +257,7 @@ async def test_uart_tx(dut):
     rng = random.Random(SEED + 1)
     p = prog("uart_tx")
     off = await host.load_program(p, 0)
-    for div in (1.0, 3.0, 2.5, 4.75):
+    for div in (2.0, 3.0, 2.5, 4.75):
         data = [rng.randrange(256) for _ in range(6)]
         await host.enable(0)
         await host.configure(0, p, offset=off, div=div, out_base=8, out_count=1,
@@ -466,24 +466,25 @@ async def test_ws2812(dut):
     rng = random.Random(SEED + 7)
     p = prog("ws2812")
     off = await host.load_program(p, 0)
-    await host.configure(LAST, p, offset=off, div=1, sideset_base=12, autopull=True, pull_thresh=8)
+    div = 2
+    await host.configure(LAST, p, offset=off, div=div, sideset_base=12, autopull=True, pull_thresh=8)
     await host.restart(1 << LAST)
     log, stop = [], [False]
     cocotb.start_soon(edge_log(dut, pins, 12, log, stop))
     data = [rng.randrange(256) for _ in range(3)]
-    for b in data:            # prefill: the 80-cycle bytes outrun the SPI host
+    for b in data:            # prefill: the 160-cycle bytes outrun the SPI host
         await host.push(LAST, b << 8)
     await host.enable(1 << LAST)
-    await ClockCycles(dut.clk, 400)
+    await ClockCycles(dut.clk, 24 * 10 * div + 160)
     stop[0] = True
     rises = [t for t, v in log if v == 1]
     falls = [t for t, v in log if v == 0]
     assert len(rises) == 24 and len(falls) == 24, f"{len(rises)} rises, {len(falls)} falls"
     bits = []
-    for r, f in zip(rises, falls):
-        assert f - r in (2, 7), f"bad high width {f - r}"
-        bits.append(1 if f - r == 7 else 0)
-    periods = {b - a for a, b in zip(rises, rises[1:])}
+    for r, f in zip(rises, falls):        # edge times are clocks; widths in ticks
+        assert (f - r) % div == 0 and (f - r) // div in (2, 7), f"bad high width {f - r}"
+        bits.append(1 if (f - r) // div == 7 else 0)
+    periods = {(b - a) // div for a, b in zip(rises, rises[1:])}
     assert periods == {10}, f"unexpected bit periods {periods}"
     expected = [(b >> i) & 1 for b in data for i in range(7, -1, -1)]
     assert bits == expected
@@ -497,7 +498,7 @@ async def test_manchester_tx(dut):
     p = prog("manchester_tx")
     off = await host.load_program(p, 0)
     half = 64     # ticks; a byte takes 1024 cycles, slower than a SPI push
-    div = 1
+    div = 2
     await host.configure(2, p, offset=off, div=div, out_base=11, out_count=1,
                          out_shr=True, autopull=True, pull_thresh=8)
     await host.restart(4)

@@ -2,7 +2,8 @@
 
 Every instruction is one 16-bit word and executes in exactly one tick unless
 it stalls. A tick is one period of the machine's clock divider
-(`clk / (DIV_INT + DIV_FRAC/256)`).
+(`clk / (DIV_INT + DIV_FRAC/256)`). Instruction fetch is pipelined, so a
+tick is at least two clocks: `DIV_INT = 1` behaves as 2.
 
 ```
  15 14 13 | 12 11 10 9 | 8 7 6 5 4 3 2 1 0

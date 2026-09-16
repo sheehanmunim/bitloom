@@ -37,7 +37,7 @@ Base address `0x20 + 0x20 * n` for machine `n`.
 
 | Off | Name | R/W | Bits |
 |---|---|---|---|
-| 0x00 | DIV_INT_L | RW | divider integer part, low byte (0 means 65536) |
+| 0x00 | DIV_INT_L | RW | divider integer part, low byte (0 means 65536, 1 behaves as 2) |
 | 0x01 | DIV_INT_H | RW | divider integer part, high byte |
 | 0x02 | DIV_FRAC | RW | divider fraction / 256 |
 | 0x03 | OUT_BASE | RW | first GPIO for `out pins` / `out pindirs` / `mov pins` |

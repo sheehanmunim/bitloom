@@ -7,6 +7,12 @@
  * until its condition holds. Every instruction also carries a delay field so
  * the program can pad to exact bit periods.
  *
+ * Instruction fetch is registered: the word at PC is latched into IR every
+ * clock and decoded on the next tick. The 64:1 read mux of the shared
+ * instruction memory is the longest path in the chip and this keeps it out
+ * of the decode/execute cycle. The price is that a tick is at least two
+ * clocks long, so DIV_INT = 1 behaves as 2 (25 M instructions/s at 50 MHz).
+ *
  * Registers (per state machine):
  *   PC        instruction pointer (shared instruction memory)
  *   X, Y      16-bit scratch registers
@@ -155,6 +161,7 @@ module bitloom_sm #(
   reg [15:0] exec_ir;
   reg        step_pend;
   reg        stalled_r;
+  reg [15:0] ir_r;                 // instruction at PC, fetched last clock
 
   assign imem_addr = pc;
   assign dbg_pc = pc;
@@ -190,13 +197,15 @@ module bitloom_sm #(
   // ------------------------------------------------------------------
   wire       tick = (div_cnt == 16'd0);
   wire [8:0] frac_sum = {1'b0, div_frac} + {1'b0, cfg_div_frac};
+  // The fetch pipeline needs one clock between ticks: a divider of 1 runs as 2.
+  wire [15:0] div_int_eff = (cfg_div_int == 16'd1) ? 16'd2 : cfg_div_int;
 
   always @(posedge clk) begin
     if (!rst_n) begin
       div_cnt  <= 16'd0;
       div_frac <= 8'd0;
     end else if (tick) begin
-      div_cnt  <= cfg_div_int - 16'd1 + {15'd0, frac_sum[8]};
+      div_cnt  <= div_int_eff - 16'd1 + {15'd0, frac_sum[8]};
       div_frac <= frac_sum[7:0];
     end else begin
       div_cnt  <= div_cnt - 16'd1;
@@ -209,7 +218,16 @@ module bitloom_sm #(
   wire        run     = tick && (cfg_enable || step_pend || exec_pend) && !restart;
   wire        do_exec = run && (exec_pend || step_pend || delay_cnt == 4'd0);
 
-  wire [15:0] ir  = exec_pend ? exec_ir : imem_rdata;
+  // ------------------------------------------------------------------
+  // Fetch: PC is only ever changed at a commit or by the host, and the next
+  // tick is at least two clocks away, so IR is always current when decoded.
+  // ------------------------------------------------------------------
+  always @(posedge clk) begin
+    if (!rst_n) ir_r <= 16'd0;
+    else        ir_r <= imem_rdata;
+  end
+
+  wire [15:0] ir  = exec_pend ? exec_ir : ir_r;
   wire [2:0]  op  = ir[15:13];
   wire [3:0]  ds  = ir[12:9];
   wire [8:0]  arg = ir[8:0];
