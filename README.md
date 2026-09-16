@@ -48,7 +48,9 @@ docs/           info.md (datasheet), isa.md (instruction set), registers.md
 * **Machines.** Four identical state machines, each with PC, X, Y, ISR, OSR,
   timebase T, deadline DL, a 16.8 fractional clock divider, and 4-deep TX/RX
   FIFOs. One instruction per tick, deterministic stalls on `wait`, blocking
-  `push`/`pull`, and autopull/autopush.
+  `push`/`pull`, and autopull/autopush. Instruction fetch is registered, so a
+  tick is at least two clocks: the divider minimum is 2 (25 M instructions/s
+  at 50 MHz).
 * **ISA.** Eight opcodes in 16 bits: `jmp wait in out push/pull mov set time`.
   Four delay/side-set bits per instruction. See [docs/isa.md](docs/isa.md).
 * **Host.** SPI mode 0, MSB first, `cmd addr data...` frames with auto
@@ -126,7 +128,21 @@ the same description.
   12 MHz-multiple tick and NRZI/bit-stuffing in firmware; 10BASE-T Manchester
   needs a 20 MHz tick, i.e. a 40 MHz or 60 MHz system clock. Both fit the ISA.
 * Not taped out yet. The CI GDS job is the source of truth for area and timing.
-* The first hardening attempt with four machines synthesised to 28.1K cells, 0.389 mm² (49% utilisation) and detailed routing was still converging (24 violations left) when it hit the six-hour CI limit, on the three routing layers the Tiny Tapeout flow allows. The current build uses three machines (0.316 mm², 21.9K cells) and a lower placement density. `N_SM` in `src/project.v` is the knob.
+* Hardened 2026-09-16 with three machines: 26.8K standard cells, 0.40 mm²
+  (45% utilisation), DRC/LVS/antenna clean. Timing at 50 MHz closes at all
+  three corners: setup slack +0.9 ns at the slow corner (1.08 V, 125 °C),
+  +7.9 ns typical, hold +0.07 ns at the fast corner; no max-cap violations and
+  four max-slew warnings. Getting there took two rounds of design changes (a
+  registered instruction fetch; then a registered input-filter select, EXEC
+  loaded straight into IR, and a reset synchroniser) plus three flow settings
+  in `src/config.json` (repair after global routing, a 400 µm wire-length
+  cap, 60% placement density). The stock flow only repairs timing against
+  estimated parasitics, and the extracted netlist had been 9 ns short at the
+  slow corner while reporting +1.7 ns typical.
+* The first hardening attempt with four machines synthesised to 28.1K cells,
+  0.389 mm² (49% utilisation) and detailed routing was still converging
+  (24 violations left) when it hit the six-hour CI limit, on the three routing
+  layers the Tiny Tapeout flow allows. `N_SM` in `src/project.v` is the knob.
 
 ## License
 

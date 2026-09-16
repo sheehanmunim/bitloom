@@ -9,10 +9,10 @@ state machines that bit-bang protocols from firmware with cycle-exact timing,
 in the spirit of the RP2040 PIO and TI PRU, plus a few things those lack.
 
 Each machine executes one 16-bit instruction per tick of its own fractional
-clock divider. The instruction set is built around pins and time: `jmp`,
+clock divider (minimum divider 2, so up to 25 M instructions/s at 50 MHz). The instruction set is built around pins and time: `jmp`,
 `wait`, `in`, `out`, `push`/`pull`, `mov`, `set`, and `time`. Every
 instruction carries a delay field and optional side-set bits so a program can
-drive a pin *and* pad to an exact bit period in a single word. All four
+drive a pin *and* pad to an exact bit period in a single word. All three
 machines share a 64-word instruction memory, 20 GPIOs, eight inter-machine
 flags, and each has a 4-deep 16-bit TX and RX FIFO towards the host.
 
