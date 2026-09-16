@@ -607,3 +607,26 @@ async def test_flags_and_filter(dut):
     await ClockCycles(dut.clk, 30)
     assert pins.gpio_out(15) == 1 and pins.gpio_out(14) == 1
     assert await host.read1(R_FLAGS) == 0, "wait 1 flag must clear the flag"
+
+
+@cocotb.test(timeout_time=30, timeout_unit="ms")
+async def test_min_divider(dut):
+    """Fetch is pipelined: divider 1 runs at the same rate as divider 2."""
+    host, pins = await setup(dut)
+    p = assemble("halt: jmp halt")
+    off = await host.load_program(p, 0)
+
+    async def ticks(div):
+        await host.configure(0, p, offset=off, div=div)
+        await host.restart(1)
+        await host.enable(1)
+        await ClockCycles(dut.clk, 400)
+        await host.enable(0)
+        lo, hi = await host.read(sm_reg(0, S_T_L), 2)
+        return lo | (hi << 8)
+
+    t1, t2, t4 = await ticks(1), await ticks(2), await ticks(4)
+    # Allow one tick for the divider phase at the moment enable lands.
+    assert abs(t1 - t2) <= 1, f"divider 1 must behave as 2: {t1} ticks vs {t2}"
+    assert abs(t2 - 2 * t4) <= 4, f"divider 4 must tick half as often: {t2} vs {t4}"
+    assert t2 > 150, f"machine barely ran: {t2} ticks"
